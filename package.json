@@ -1,0 +1,16 @@
+{
+  "name": "node-espruino",
+  "version": "0.0.1",
+  "description": "Node library for interfacing with espruino javascript microcontroller.",
+  "main": "deploy.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Xavier Zwirtz",
+  "license": "MIT",
+  "dependencies": {
+    "serialport": "~1.3.1",
+    "lodash": "~2.4.1",
+    "minimist": "0.0.7"
+  }
+}
