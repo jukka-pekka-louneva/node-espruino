@@ -55,7 +55,7 @@ var runCommand = function(espruino) {
 
 if (typeof port !== 'undefined') {
 	var espruino = nodeEspruino.espruino({
-		serialport: port
+		comPort: port
 	});
 
 	runCommand(espruino);
@@ -83,7 +83,7 @@ if (typeof port !== 'undefined') {
 			// if (line === 'right') rl.close();
 			// rl.prompt();
 			var espruino = nodeEspruino.espruino({
-				serialport: input
+				comPort: input
 			});
 
 			rl.close();

@@ -2,6 +2,7 @@
 /* global module */
 
 var serialPortTop = require('serialport');
+var _ = require('lodash');
 var S = require('string');
 
 var that = {};
@@ -10,12 +11,9 @@ that.espruino = function(spec) {
   'use strict';
 
   var espruino = {
-    serialport: spec.serialport
+    comPort: spec.comPort,
+    boardSerial: spec.boardSerial
   };
-
-  var serialPort = new serialPortTop.SerialPort(espruino.serialport, {
-    baudrate: 9600
-  }, false); // this is the openImmediately flag [default is true]
 
   var open = false;
   var ensureOpend = function() {
@@ -24,14 +22,31 @@ that.espruino = function(spec) {
     }
   };
 
+  var serialPort;
   espruino.open = function(done) {
-    serialPort.open(function(err) {
-      if (err) {
-        throw err;
-      }
-      open = true;
-      done();
-    });
+
+    var openPort = function(comPort) {
+      serialPort = new serialPortTop.SerialPort(comPort, {
+        baudrate: 9600
+      }, false); // this is the openImmediately flag [default is true]
+
+      serialPort.open(function(err) {
+        if (err) {
+          throw err;
+        }
+        open = true;
+        done();
+      });
+    };
+
+    if (_.isUndefined(espruino.comPort) && _.isUndefined(espruino.boardSerial)) {
+      throw 'can\'t open espruino until comPort or boardSerial is set.';
+    } else if (!_.isUndefined(espruino.comPort)) {
+      openPort(espruino.comPort);
+    } else if (!_.isUndefined(espruino.boardSerial)) {
+      throw 'not setup to support board serial yet.';
+    }
+
   };
 
   espruino.write = function(text) {
@@ -44,7 +59,6 @@ that.espruino = function(spec) {
   };
 
   espruino.reset = function(done) {
-
     ensureOpend();
     espruino.command('reset()', function(result) {
       done();
@@ -58,7 +72,7 @@ that.espruino = function(spec) {
     espruino.command('save()', function(result) {
       done();
     });
- 
+
   };
 
   espruino.flash = function(text, done) {
@@ -121,7 +135,7 @@ that.espruino = function(spec) {
       };
 
       if (isDone(completeData)) {
- 
+
         var result = getResult(completeData);
 
         done(result);
@@ -159,8 +173,9 @@ that.espruino = function(spec) {
   };
 
   espruino.close = function(done) {
-    //console.log(serialPort.listeners('on'));
-    serialPort.close(done);
+    if (typeof serialPort !== 'undefined') {
+      serialPort.close(done);
+    }
   };
 
   return espruino;
