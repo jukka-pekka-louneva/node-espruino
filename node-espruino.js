@@ -1,4 +1,8 @@
+/* global require */
+/* global module */
+
 var serialPortTop = require('serialport');
+var S = require('string');
 
 var that = {};
 
@@ -39,21 +43,191 @@ that.espruino = function(spec) {
     });
   };
 
-  espruino.on = function(event, func) {
+  espruino.reset = function(done) {
+
+    ensureOpend();
+    espruino.command('reset()', function(result) {
+      done();
+    });
+
+  };
+
+  espruino.save = function(done) {
+    ensureOpend();
+
+    espruino.command('save()', function(result) {
+      done();
+    });
+ 
+  };
+
+  espruino.flash = function(text, done) {
+    ensureOpend();
+
+    espruino.reset(function() {
+      espruino.command(text, function() {
+        espruino.save(function() {
+          done();
+        });
+      });
+    });
+
+  };
+
+  espruino.command = function(command, done) {
+    ensureOpend();
+
+    if (S(command).endsWith('\n') === false) {
+      command += '\n';
+    }
+
+    var completeData = '';
+    var handler = function(data) {
+
+      completeData += data;
+
+      var isDone = function(data) {
+        var regex = /^(.+)/gm;
+
+        var matches = [];
+        var match;
+
+        while (match = regex.exec(data)) {
+          matches.push(match);
+        }
+
+        var lastLine = matches[matches.length - 1][1];
+
+        return S(lastLine).startsWith('>');
+      };
+
+      var getResult = function(data) {
+
+        var regex = /^=(.+)/gm;
+
+        var matches = [];
+        var match;
+
+        while (match = regex.exec(data)) {
+          matches.push(match);
+        }
+
+        if (matches.length === 0) {
+          return undefined;
+        } else {
+          return matches[matches.length - 1][1];
+        }
+
+      };
+
+      if (isDone(completeData)) {
+ 
+        var result = getResult(completeData);
+
+        done(result);
+
+        espruino.removeListener('data', handler);
+      }
+
+    };
+
+    espruino.on('data', handler);
+    espruino.write(command);
+  };
+
+  espruino.dump = function(done) {
+    ensureOpend();
+
+    espruino.command('dump()', done);
+  };
+
+  espruino.on = function(event, handler) {
     if (event === 'data') {
       ensureOpend();
-      serialPort.on('data', func);
+      serialPort.on('data', handler);
+    } else {
+      throw 'event not supported: ' + event;
+    }
+  };
+
+  espruino.removeListener = function(event, handler) {
+    if (event === 'data') {
+      serialPort.removeListener('data', handler);
     } else {
       throw 'event not supported: ' + event;
     }
   };
 
   espruino.close = function(done) {
+    //console.log(serialPort.listeners('on'));
     serialPort.close(done);
   };
 
   return espruino;
 
 };
+
+// that.espruinoByBoardSerial = function(boardSerial, done) {
+//   'use strict';
+
+//   serialPortTop.list(function(err, ports) {
+
+//     var espruino;
+
+//     ports.forEach(function(port) {
+//       if (typeof espruino === 'undefined') {
+
+//         var foundHere = false;
+
+//         var serialPort = new serialPortTop.SerialPort(port.comName, {
+//           baudrate: 9600
+//         }, false); // this is the openImmediately flag [default is true]
+
+//         serialPort.open(function() {
+
+//           var totalData = '';
+
+//           setTimeout(function() {
+//             if (foundHere !== true) {
+//               serialPort.close();
+//             }
+//           }, 500);
+
+//           var handler = function(data) {
+
+//             totalData += data;
+
+//             if (totalData === '="' + boardSerial + '"') {
+//               foundHere = true;
+//               serialPort.removeListener('data', handler);
+//               // setup espruino object here.
+//               // make it where we can hand in serialPort to espruino constructor.
+
+//               var espruino = that.espruino({
+//                 serialPort: serialPort
+//               });
+
+//               done(espruino);
+
+//             }
+
+//           };
+
+//           serialPort.on('data', handler);
+
+//           serialPort.write('getSerial()\n', function(err) {
+//             if (err) {
+//               serialPort.close();
+//             }
+//           });
+
+//         });
+
+//       }
+//     });
+
+//   });
+
+// };
 
 module.exports = that;
