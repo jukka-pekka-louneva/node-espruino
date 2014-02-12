@@ -49,7 +49,7 @@ that.espruino = function(spec) {
 
   };
 
-  espruino.write = function(text) {
+  var write = function(text) {
     ensureOpend();
     serialPort.write(text, function(err) {
       if (err) {
@@ -146,7 +146,7 @@ that.espruino = function(spec) {
     };
 
     espruino.on('data', handler);
-    espruino.write(command);
+    write(command);
   };
 
   espruino.dump = function(done) {
