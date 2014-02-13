@@ -66,7 +66,7 @@ of board you want to connect to.
 	
 **methods**
 
-`function open(done)`
+`function open( function done(err) )`
 
 This function must be called before any other function, it opens communication to the espruino board.
 Accepts a callback to be run when communication is established.
