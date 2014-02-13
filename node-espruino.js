@@ -35,7 +35,7 @@ that.espruino = function(spec) {
 
       serialPort.open(function(err) {
         if (err) {
-          throw err;
+          done(err);
         }
         open = true;
         done();
@@ -44,6 +44,12 @@ that.espruino = function(spec) {
     } else if (!_.isUndefined(espruino.boardSerial)) {
 
       serialPortTop.list(function(err, ports) {
+
+        if (ports.length === 0) {
+          done(new Error('no serial ports connected.'));
+        }
+
+        var tested = 0;
 
         ports.forEach(function(port) {
           if (typeof serialPort === 'undefined') {
@@ -56,25 +62,56 @@ that.espruino = function(spec) {
 
             queryPort.open(function(err) {
 
-              if (!err) {
+              var timeouts = 0;
+              var wrongSerial = 0;
+              var inUse = 0;
+
+              var handleFailure = function(failType) {
+                if (failType === 'timeout') {
+                  timeouts += 1;
+                } else if (failType === 'wrongserial') {
+                  wrongSerial += 1;
+                } else if (failType === 'inuse') {
+                  inUse += 1;
+                } else {
+                  throw failType;
+                }
+
+                tested += 1;
+                if (tested === ports.length) {
+                  var err = 'coudlnt find any board with serial "' + espruino.boardSerial + '", checked ' + tested + ' ports.\n' +
+                    'experienced ' + timeouts + ' timeouts, ' + wrongSerial + ' serial mismatches, and ' + inUse + ' ports in use.';
+                  done(new Error(err));
+                }
+              };
+
+              if (err) {
+                handleFailure('inuse');
+              } else {
+                var timedOut = true;
                 command(queryPort, 'getSerial()', function(result) {
 
+                  timedOut = false;
                   var boardSerial = result.substring(1, result.length - 1);
-
                   if (boardSerial === espruino.boardSerial) {
                     foundHere = true;
                     serialPort = queryPort;
                     espruino.comPort = port.comName;
                     open = true;
                     done();
+                  } else {
+                    queryPort.close();
+                    handleFailure('wrongserial');
                   }
                 });
 
                 //were only going to wait 500 msec for this to finish
                 setTimeout(function() {
-                  if (!foundHere) {
+                  if (!foundHere && timedOut) {
                     queryPort.close();
+                    handleFailure('timeout');
                   }
+
                 }, 500);
               }
 
@@ -99,6 +136,7 @@ that.espruino = function(spec) {
 
   espruino.reset = function(done) {
     ensureOpend();
+
     espruino.command('reset()', function(result) {
       done();
     });
@@ -153,9 +191,14 @@ that.espruino = function(spec) {
           matches.push(match);
         }
 
-        var lastLine = matches[matches.length - 1][1];
+        if (matches.length === 0) {
+          return false;
+        } else {
+          var lastLine = matches[matches.length - 1][1];
 
-        return S(lastLine).startsWith('>');
+          return S(lastLine).startsWith('>');
+        }
+
       };
 
       var getResult = function(data) {
@@ -230,68 +273,5 @@ that.espruino = function(spec) {
   return espruino;
 
 };
-
-// that.espruinoByBoardSerial = function(boardSerial, done) {
-//   'use strict';
-
-//   serialPortTop.list(function(err, ports) {
-
-//     var espruino;
-
-//     ports.forEach(function(port) {
-//       if (typeof espruino === 'undefined') {
-
-//         var foundHere = false;
-
-//         var serialPort = new serialPortTop.SerialPort(port.comName, {
-//           baudrate: 9600
-//         }, false); // this is the openImmediately flag [default is true]
-
-//         serialPort.open(function() {
-
-//           var totalData = '';
-
-//           setTimeout(function() {
-//             if (foundHere !== true) {
-//               serialPort.close();
-//             }
-//           }, 500);
-
-//           var handler = function(data) {
-
-//             totalData += data;
-
-//             if (totalData === '="' + boardSerial + '"') {
-//               foundHere = true;
-//               serialPort.removeListener('data', handler);
-//               // setup espruino object here.
-//               // make it where we can hand in serialPort to espruino constructor.
-
-//               var espruino = that.espruino({
-//                 serialPort: serialPort
-//               });
-
-//               done(espruino);
-
-//             }
-
-//           };
-
-//           serialPort.on('data', handler);
-
-//           serialPort.write('getSerial()\n', function(err) {
-//             if (err) {
-//               serialPort.close();
-//             }
-//           });
-
-//         });
-
-//       }
-//     });
-
-//   });
-
-// };
 
 module.exports = that;

@@ -25,14 +25,19 @@ var boardSerial = args.boardserial;
 var listen = args.listen;
 
 var runCommand = function(espruino) {
-	console.log('connecting to serial ' + port);
 
 	if (command === 'flash') {
-		espruino.open(function() {
+		espruino.open(function(err) {
+
+			debugger;
+			if (err) {
+				espruino.close();
+				console.error(err);
+				process.exit(1);
+			}
 
 			var file = args._[1];
 			var content = fs.readFileSync(file, 'utf8');
-
 
 			var handler = function(data) {
 				process.stdout.write(data);
@@ -52,7 +57,6 @@ var runCommand = function(espruino) {
 				}
 
 			});
-
 		});
 	} else {
 		espruino.close();
@@ -63,10 +67,12 @@ var runCommand = function(espruino) {
 };
 
 if (typeof port !== 'undefined') {
+	console.log('connecting to COM ' + port);
 	runCommand(nodeEspruino.espruino({
 		comPort: port
 	}));
 } else if (typeof boardSerial !== 'undefined') {
+	console.log('connecting to board with serial ' + boardSerial);
 	runCommand(nodeEspruino.espruino({
 		boardSerial: boardSerial
 	}));
