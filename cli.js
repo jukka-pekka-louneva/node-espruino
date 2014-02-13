@@ -57,6 +57,7 @@ var runCommand = function(espruino) {
 				}
 
 			});
+
 		});
 	} else {
 		espruino.close();

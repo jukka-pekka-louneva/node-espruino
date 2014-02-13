@@ -50,6 +50,28 @@ that.espruino = function(spec) {
         }
 
         var tested = 0;
+        var timeouts = 0;
+        var wrongSerial = 0;
+        var inUse = 0;
+
+        var handleFailure = function(failType) {
+          if (failType === 'timeout') {
+            timeouts += 1;
+          } else if (failType === 'wrongserial') {
+            wrongSerial += 1;
+          } else if (failType === 'inuse') {
+            inUse += 1;
+          } else {
+            throw failType;
+          }
+
+          tested += 1;
+          if (tested === ports.length) {
+            var err = 'coudlnt find any board with serial "' + espruino.boardSerial + '", checked ' + tested + ' ports.\n' +
+              'experienced ' + timeouts + ' timeouts, ' + wrongSerial + ' serial mismatches, and ' + inUse + ' ports in use.';
+            done(new Error(err));
+          }
+        };
 
         ports.forEach(function(port) {
           if (typeof serialPort === 'undefined') {
@@ -62,36 +84,24 @@ that.espruino = function(spec) {
 
             queryPort.open(function(err) {
 
-              var timeouts = 0;
-              var wrongSerial = 0;
-              var inUse = 0;
-
-              var handleFailure = function(failType) {
-                if (failType === 'timeout') {
-                  timeouts += 1;
-                } else if (failType === 'wrongserial') {
-                  wrongSerial += 1;
-                } else if (failType === 'inuse') {
-                  inUse += 1;
-                } else {
-                  throw failType;
-                }
-
-                tested += 1;
-                if (tested === ports.length) {
-                  var err = 'coudlnt find any board with serial "' + espruino.boardSerial + '", checked ' + tested + ' ports.\n' +
-                    'experienced ' + timeouts + ' timeouts, ' + wrongSerial + ' serial mismatches, and ' + inUse + ' ports in use.';
-                  done(new Error(err));
-                }
-              };
-
               if (err) {
                 handleFailure('inuse');
               } else {
-                var timedOut = true;
+
+                //were only going to wait 500 msec for this to finish
+                var timedout = true; 
+                setTimeout(function() {
+                  if (!foundHere && timedout) {
+                    queryPort.close();
+                    handleFailure('timeout');
+                  }
+
+                }, 500);
+
                 command(queryPort, 'getSerial()', function(result) {
 
-                  timedOut = false;
+                  timedout = false
+                  //timedOut = false;
                   var boardSerial = result.substring(1, result.length - 1);
                   if (boardSerial === espruino.boardSerial) {
                     foundHere = true;
@@ -105,14 +115,6 @@ that.espruino = function(spec) {
                   }
                 });
 
-                //were only going to wait 500 msec for this to finish
-                setTimeout(function() {
-                  if (!foundHere && timedOut) {
-                    queryPort.close();
-                    handleFailure('timeout');
-                  }
-
-                }, 500);
               }
 
             });
@@ -163,7 +165,9 @@ that.espruino = function(spec) {
     espruino.reset(function() {
       espruino.command(text, function() {
         espruino.save(function() {
-          done();
+          if(!_.isUndefined(done)){
+            done();
+          }
         });
       });
     });
