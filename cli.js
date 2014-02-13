@@ -22,6 +22,7 @@ if (typeof command === 'undefined') {
 
 var port = args.port;
 var boardSerial = args.boardserial;
+var listen = args.listen;
 
 var runCommand = function(espruino) {
 	console.log('connecting to serial ' + port);
@@ -32,6 +33,7 @@ var runCommand = function(espruino) {
 			var file = args._[1];
 			var content = fs.readFileSync(file, 'utf8');
 
+
 			var handler = function(data) {
 				process.stdout.write(data);
 			};
@@ -40,8 +42,15 @@ var runCommand = function(espruino) {
 			espruino.on('data', handler);
 			espruino.flash(content, function() {
 				console.log('success!');
-				espruino.removeListener('data', handler);
-				espruino.close();
+
+				if (listen === true) {
+					// were going to leave the serial connection open, so that the user can watch the 
+					// response from the board. 
+				} else {
+					espruino.removeListener('data', handler);
+					espruino.close();
+				}
+
 			});
 
 		});
@@ -54,17 +63,13 @@ var runCommand = function(espruino) {
 };
 
 if (typeof port !== 'undefined') {
-	var espruino = nodeEspruino.espruino({
+	runCommand(nodeEspruino.espruino({
 		comPort: port
-	});
-
-	runCommand(espruino);
-// } else if (typeof boardSerial !== 'undefined') {
-
-// 	nodeEspruino.espruinoBySerial(boardSerial, function(espruino) {
-// 		runCommand(espruino);
-// 	});
-
+	}));
+} else if (typeof boardSerial !== 'undefined') {
+	runCommand(nodeEspruino.espruino({
+		boardSerial: boardSerial
+	}));
 } else {
 
 	console.log('Enter the serial port that the espruino is connected to.');

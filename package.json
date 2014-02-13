@@ -1,6 +1,6 @@
 {
   "name": "node-espruino",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Node library for interfacing with espruino javascript microcontroller.",
   "main": "node-espruino.js",
   "homepage": "https://bitbucket.org/VoiceOfWisdom/node-espruino",

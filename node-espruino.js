@@ -25,8 +25,11 @@ that.espruino = function(spec) {
   var serialPort;
   espruino.open = function(done) {
 
-    var openPort = function(comPort) {
-      serialPort = new serialPortTop.SerialPort(comPort, {
+    if (_.isUndefined(espruino.comPort) && _.isUndefined(espruino.boardSerial)) {
+      throw 'can\'t open espruino until comPort or boardSerial is set.';
+    } else if (!_.isUndefined(espruino.comPort)) {
+
+      serialPort = new serialPortTop.SerialPort(espruino.comPort, {
         baudrate: 9600
       }, false); // this is the openImmediately flag [default is true]
 
@@ -37,20 +40,56 @@ that.espruino = function(spec) {
         open = true;
         done();
       });
-    };
 
-    if (_.isUndefined(espruino.comPort) && _.isUndefined(espruino.boardSerial)) {
-      throw 'can\'t open espruino until comPort or boardSerial is set.';
-    } else if (!_.isUndefined(espruino.comPort)) {
-      openPort(espruino.comPort);
     } else if (!_.isUndefined(espruino.boardSerial)) {
-      throw 'not setup to support board serial yet.';
+
+      serialPortTop.list(function(err, ports) {
+
+        ports.forEach(function(port) {
+          if (typeof serialPort === 'undefined') {
+
+            var foundHere = false;
+
+            var queryPort = new serialPortTop.SerialPort(port.comName, {
+              baudrate: 9600
+            }, false); // this is the openImmediately flag [default is true]
+
+            queryPort.open(function(err) {
+
+              if (!err) {
+                command(queryPort, 'getSerial()', function(result) {
+
+                  var boardSerial = result.substring(1, result.length - 1);
+
+                  if (boardSerial === espruino.boardSerial) {
+                    foundHere = true;
+                    serialPort = queryPort;
+                    espruino.comPort = port.comName;
+                    open = true;
+                    done();
+                  }
+                });
+
+                //were only going to wait 500 msec for this to finish
+                setTimeout(function() {
+                  if (!foundHere) {
+                    queryPort.close();
+                  }
+                }, 500);
+              }
+
+            });
+
+          }
+        });
+
+      });
+
     }
 
   };
 
-  var write = function(text) {
-    ensureOpend();
+  var write = function(serialPort, text) {
     serialPort.write(text, function(err) {
       if (err) {
         throw err;
@@ -78,6 +117,11 @@ that.espruino = function(spec) {
   espruino.flash = function(text, done) {
     ensureOpend();
 
+    //were going to wrap the text to flash in a self executing anonymous function,
+    //to ensure that eveything runs at once.
+
+    text = '(function(){ ' + text + ' })();';
+
     espruino.reset(function() {
       espruino.command(text, function() {
         espruino.save(function() {
@@ -88,8 +132,7 @@ that.espruino = function(spec) {
 
   };
 
-  espruino.command = function(command, done) {
-    ensureOpend();
+  var command = function(serialPort, command, done) {
 
     if (S(command).endsWith('\n') === false) {
       command += '\n';
@@ -140,13 +183,19 @@ that.espruino = function(spec) {
 
         done(result);
 
-        espruino.removeListener('data', handler);
+        serialPort.removeListener('data', handler);
       }
 
     };
 
-    espruino.on('data', handler);
-    write(command);
+    serialPort.on('data', handler);
+    write(serialPort, command);
+
+  };
+
+  espruino.command = function(text, done) {
+    ensureOpend();
+    command(serialPort, text, done);
   };
 
   espruino.dump = function(done) {
