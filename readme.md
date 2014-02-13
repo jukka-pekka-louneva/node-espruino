@@ -2,7 +2,7 @@ node-espruino
 =============
 
 An easy to use node module for interfacing with a micro controller running [espruino](http://www.espruino.com/) as well as a cli.
-
+[Available as a Grunt task](https://www.npmjs.org/package/grunt-espruino).
 
 Using from node
 ---------------
@@ -107,7 +107,9 @@ CLI Reference
 ### Global arguments
 
 `--port [COM Port]`
+
 `--boardserial [Board Serial No]`
+
 `--listen`
 
 If listen is specified, after the command is completed we will leave the serial connection open and print from the espruino.
@@ -123,12 +125,10 @@ Issues
 
 * The command line functionality doesnt like arguments with & in them, everything after gets truncated.
 * The board is remembering things after reset has been called, I believe this is a issue
-	with the board itself. [Reported here](https://github.com/espruino/Espruino/issues/231).
+	with the board itself. [Reported here.](https://github.com/espruino/Espruino/issues/231).
 
 ToDo
 ----
 
 * Add support for parsing out `require('moduleName')` and deploying that module and its dependencies as well.
-* Create grunt task, `grunt-espruino`, to automate deploying to an espruino on save.
-	Should function with the grunt watch task.
 * Create tests.
