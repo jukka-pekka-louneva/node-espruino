@@ -5,18 +5,16 @@ var nodeEspruino = require('../node-espruino.js');
 var espruino = nodeEspruino.espruino({
 	boardSerial: '33FFD605-41573033-15720843'
 });
-describe('#simple commands', function() {
-	it('should connect', function(done) {
 
-		espruino.open(function(err) {
-			if (err) {
-				throw err;
-			}
-			done();
-		});
-		//assert.equal(true, false);
+before(function(done) {
+	espruino.open(function(err) {
+		if (err) {
+			throw err;
+		}
+		done();
 	});
 });
+
 describe('#simple commands', function() {
 	it('should calculate 2+2', function(done) {
 
@@ -132,7 +130,7 @@ describe('#program boards', function() {
 		code += 'var bus = require("./filename.js"); \n';
 		code += 'var bus = require("./dir/filename.js"); \n';
 		code += 'bugrequire("farquad"); \n'; //this one shouldnt get caught.
-		code += 'bugrequire("fs"); \n'; //this one shouldnt get caught either since its a built in module.
+		code += 'require("fs"); \n'; //this one shouldnt get caught either since its a built in module.
 
 		var modules = espruino.parseModules(code);
 
@@ -141,6 +139,43 @@ describe('#program boards', function() {
 		assert.equal('node-bus', modules[1]);
 		assert.equal('./filename.js', modules[2]);
 		assert.equal('./dir/filename.js', modules[3]);
+
+	});
+
+	it('should upload a piece of code, and its required modules.', function(done) {
+
+		var code = '';
+		code += 'var bus = require( "bus.espr.js" ).create({axels: 4}); \n';
+		code += 'var car = require("./car.espr.js").create({make: "mazda", model: "miata"}); \n';
+		code += 'var plane = require("submod/plane.espr.js").create({engines: 2}); \n';
+		code += 'var train = require("./submod/train.espr.js").create({type: "passenger"}); \n';
+		code += 'bugrequire("farquad"); \n'; //this one shouldnt get caught.
+		code += 'require("fs"); \n'; //this one shouldnt get caught either since its a built in module.
+
+		var opts = {
+			save: true,
+			uploadModules: true,
+			moduleDir: 'modules'
+		};
+
+		espruino.upload(code, opts, function() {
+			espruino.command('bus.axels', function(result) {
+				assert.equal('4', result);
+
+				espruino.command('car.make + "," + car.model', function(result) {
+					assert.equal('"mazda,miata"', result);
+
+					espruino.command('plane.maxLoad()', function(result) {
+						assert.equal('10000', result);
+						
+						espruino.command('train.type', function(result) {
+							assert.equal('"passenger"', result);
+							done();
+						});
+					});
+				});
+			});
+		});
 
 	});
 

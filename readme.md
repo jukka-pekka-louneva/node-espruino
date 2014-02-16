@@ -35,13 +35,13 @@ Use.
 
 ```
 $ echo 'digitalWrite(LED1, true);' > led.js
-$ espruino flash led.js
+$ espruino upload led.js --save
 ```
 
 if you know the serial number of the board, you can refer to it by serial:
 
 ```
-$ espruino flash led.js --boardserial '33FFD605-41573033-15720843'
+$ espruino upload led.js --save --boardserial '33FFD605-41573033-15720843'
 ```
 
 API Reference
@@ -53,7 +53,7 @@ Returns a new espruino. `comPort` or `boardSerial` must be specified. Before any
 be made to the espruino board the `open` function must be called, which acepts a callback to be
 executed on completion.
 
-**options**
+#### options
 
 `comPort`
 
@@ -64,62 +64,62 @@ COM address to connect to.
 Serial (as in board manufacturer serial number, not COM port.)
 of board you want to connect to.
 	
-**methods**
+#### methods
 
-`function open( function done(err) )`
+##### function open( function done(err) )
 
 This function must be called before any other function, it opens communication to the espruino board.
 Accepts a callback to be run when communication is established.
 
-`function command(text, function done(result) )`
+##### function command(text, function done(result) )
 
 Executes text on espruino, calls `done` on completion with result of command. 
 
-`function command(text, function done(result) )`
-
-Same as `command`, wraps `text` with `(function() { text... })();`.
-
-`function reset(done)`
+##### function reset(done)
 
 Resets boards memory to default, dumping all loaded code. `done` is a callback that executes after reset completes.
 
-`function save()`
+##### function save()
 
 Saves loaded code to flash. Preserves after board hard reset and loss of power. `done` is a callback that executes after reset completes.
 
-`function flash(text, function done() )`
+##### function upload(code, options, function done() )
+`options`:
+* `save: [true| false]` whether to save the loaded code to the to the espruinos onboard flash.
+* `uploadModules: [true | false]` if true, module requires are parsed out of `code` and uploaded.
+* `moduleDir: 'Path'` the root directory to look for modules.
 
-Convenience function, resets board, writes text then saves all in one call.
+Convenience function. Parses out modules from code and loads from disk, resets board, then uploads `code`. 
 
-`function dump(function done(result))`
+##### function dump(function done(result))
 
 Dumps loaded code from espruino.
 
-`function addModule(name, code, function done)`
+##### function addModule(name, code, function done)
 
 Adds a module with the specified name and code to the espruino. It can then be loaded by 
 running `require('name')` on the espruino.
 
-`function clearModules(function done)`
+##### function clearModules(function done)
 
 Clears all loaded modules from espruino.
 
-`function parseModules(code)`
+##### function parseModules(code)
 
 Returns an array of all modules defined in `code`. Parses out `require('module')` from input code.
 
-`function close(function done() )`
+##### function close(function done() )
 
 Closes serial connection to espruino.
 
-**events**
+#### events
 
 `.on('data', function callback(data) )`
 
 when espruino writes data back over serial, callback is called with data.
 
-CLI Reference
--------------
+## CLI Reference
+----------------
 
 ### Global arguments
 
@@ -133,19 +133,18 @@ If listen is specified, after the command is completed we will leave the serial 
 
 ### Commands
 
-`flash [file]`
+`upload [file] --save`
 
-Flashes the specified file to the espruinos onboard memory.
+Flashes the specified file to the espruino. If `save` is specified the uploaded code is saved to flash.
 
-Issues
-------
+## Issues
+---------
 
 * The command line functionality doesnt like arguments with & in them, everything after gets truncated.
 * The board is remembering things after reset has been called, I believe this is a issue
 	with the board itself. [Reported here.](https://github.com/espruino/Espruino/issues/231).
 
-ToDo
-----
+## ToDo
+-------
 
-* Add support for parsing out `require('moduleName')` and deploying that module and its dependencies as well.
-* Create tests.
+Nothing now. Yay!

@@ -26,8 +26,10 @@ var listen = args.listen;
 
 var runCommand = function(espruino) {
 
-	if (command === 'flash') {
+	if (command === 'upload') {
 		espruino.open(function(err) {
+
+			var save = !! args.save;
 
 			if (err) {
 				espruino.close();
@@ -38,13 +40,19 @@ var runCommand = function(espruino) {
 			var file = args._[1];
 			var content = fs.readFileSync(file, 'utf8');
 
+			console.log('begining upload.');
+
 			var handler = function(data) {
 				process.stdout.write(data);
 			};
 
-			console.log('begining flash.');
+			var opts = {
+				save: save,
+				uploadModules: true
+			};
+
 			espruino.on('data', handler);
-			espruino.flash(content, function() {
+			espruino.upload(content, opts, function() {
 				console.log('success!');
 
 				if (listen === true) {

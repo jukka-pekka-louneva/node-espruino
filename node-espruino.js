@@ -4,6 +4,8 @@
 var serialPortTop = require('serialport');
 var _ = require('lodash');
 var S = require('string');
+var fs = require('fs');
+var path = require('path');
 
 var that = {};
 
@@ -154,20 +156,81 @@ that.espruino = function(spec) {
 
   };
 
-  espruino.flash = function(text, done) {
+  /*
+    opts: {
+      save: (true|false),
+      uploadModules: (true|false), //whether to upload modules found in code.
+      moduleDir: 'pathToDir' // specify directory to search for modules in.
+    }
+   */
+  espruino.upload = function(code, opts, done) {
     ensureOpend();
 
-    //were going to wrap the text to flash in a self executing anonymous function,
-    //to ensure that eveything runs at once.
+    if(_.isUndefined(opts.moduleDir)){
+      opts.moduleDir = './';
+    }
+
+    var modules;
+    if (opts.uploadModules) {
+
+      var moduleDir = path.normalize(opts.moduleDir);
+
+      modules = _.map(espruino.parseModules(code), function(module) {
+
+        var modulePath = path.resolve(moduleDir, module);
+        // if (isRelative(module)) {
+        //   modulePath = path.resolve(moduleDir, module);
+        //   console.log(modulePath);
+        // } else {
+        //   modulePath = path.resolve(module);
+        // }
+
+        if (!fs.existsSync(modulePath)) {
+          throw modulePath + ' does not exist';
+        }
+
+        return {
+          name: module,
+          path: modulePath,
+          content: fs.readFileSync(modulePath, 'utf8')
+        };
+      });
+    }
+
+    done = _.isUndefined(done) ? function() {} : done;
 
     espruino.reset(function() {
-      espruino.commandWrapped(text, function() {
-        espruino.save(function() {
-          if (!_.isUndefined(done)) {
+
+      var uploadCode = function() {
+        espruino.commandWrapped(code, function() {
+          if (opts.save) {
+            espruino.save(function() {
+              done();
+            });
+          } else {
             done();
           }
         });
-      });
+      };
+
+      if (opts.uploadModules && modules.length > 0) {
+
+        var uploadModule = function(index) {
+          if (index !== modules.length) {
+            var module = modules[index];
+            espruino.addModule(module.name, module.content, function() {
+              uploadModule(index + 1);
+            });
+          } else {
+            uploadCode(); // were done uploading modules, upload the code.
+          }
+        };
+
+        uploadModule(0);
+      } else {
+        uploadCode();
+      }
+
     });
 
   };
@@ -197,7 +260,7 @@ that.espruino = function(spec) {
     for (var i in requires) {
       // strip off beginning and end, and parse the string
       //var module = JSON.parse(requires[i].substring(8, requires[i].length - 1));
-      var rawName  = requires[i].substring(8, requires[i].length - 1);
+      var rawName = requires[i].substring(8, requires[i].length - 1);
       rawName = rawName.replace(/\'/g, '"');
       var module = JSON.parse(rawName);
       var builtin_modules = ["http", "fs", "CC3000"]; // espruino has these modules built in, ignore them.
@@ -280,7 +343,7 @@ that.espruino = function(spec) {
 
   espruino.commandWrapped = function(text, done) {
     ensureOpend();
-    espruino.command('(function(){ ' + text + ' })();', done);
+    espruino.command('{ ' + text + ' };', done);
   };
 
   espruino.dump = function(done) {
