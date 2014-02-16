@@ -166,7 +166,7 @@ that.espruino = function(spec) {
   espruino.upload = function(code, opts, done) {
     ensureOpend();
 
-    if(_.isUndefined(opts.moduleDir)){
+    if (_.isUndefined(opts.moduleDir)) {
       opts.moduleDir = './';
     }
 
@@ -175,26 +175,36 @@ that.espruino = function(spec) {
 
       var moduleDir = path.normalize(opts.moduleDir);
 
-      modules = _.map(espruino.parseModules(code), function(module) {
+      var loadModules = function(code, workingDir) {
 
-        var modulePath = path.resolve(moduleDir, module);
-        // if (isRelative(module)) {
-        //   modulePath = path.resolve(moduleDir, module);
-        //   console.log(modulePath);
-        // } else {
-        //   modulePath = path.resolve(module);
-        // }
+        var modules = [];
 
-        if (!fs.existsSync(modulePath)) {
-          throw modulePath + ' does not exist';
-        }
+        espruino.parseModules(code).forEach(function(moduleName) {
 
-        return {
-          name: module,
-          path: modulePath,
-          content: fs.readFileSync(modulePath, 'utf8')
-        };
-      });
+          var modulePath = path.resolve(workingDir, moduleName);
+
+          if (!fs.existsSync(modulePath)) {
+            throw modulePath + ' does not exist';
+          }
+
+          var module = {
+            name: moduleName,
+            path: modulePath,
+            content: fs.readFileSync(modulePath, 'utf8')
+          };
+
+          var subModules = loadModules(module.content, path.dirname(module.path));
+
+          modules = modules.concat(subModules);
+
+          modules.push(module);
+        });
+
+        return modules;
+      };
+
+      modules = loadModules(code, moduleDir);
+
     }
 
     done = _.isUndefined(done) ? function() {} : done;

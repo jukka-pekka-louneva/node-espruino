@@ -143,6 +143,7 @@ describe('#program boards', function() {
 	});
 
 	it('should upload a piece of code, and its required modules.', function(done) {
+ 	this.timeout(5000);
 
 		var code = '';
 		code += 'var bus = require( "bus.espr.js" ).create({axels: 4}); \n';
@@ -158,6 +159,10 @@ describe('#program boards', function() {
 			moduleDir: 'modules'
 		};
 
+		espruino.on('data', function(data) {
+			process.stdout.write(data);
+		});
+
 		espruino.upload(code, opts, function() {
 			espruino.command('bus.axels', function(result) {
 				assert.equal('4', result);
@@ -167,10 +172,13 @@ describe('#program boards', function() {
 
 					espruino.command('plane.maxLoad()', function(result) {
 						assert.equal('10000', result);
-						
+
 						espruino.command('train.type', function(result) {
 							assert.equal('"passenger"', result);
-							done();
+							espruino.command('car.refdmod', function(result) {
+								assert.equal('"bar"', result);
+								done();
+							});
 						});
 					});
 				});

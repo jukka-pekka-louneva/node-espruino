@@ -6,6 +6,7 @@ var car = (function() {
 
 		that.make = spec.make;
 		that.model = spec.model;
+		that.refdmod = require('refdmod.js').foo;
 
 		return that;
 	};
