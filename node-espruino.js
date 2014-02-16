@@ -89,7 +89,7 @@ that.espruino = function(spec) {
               } else {
 
                 //were only going to wait 500 msec for this to finish
-                var timedout = true; 
+                var timedout = true;
                 setTimeout(function() {
                   if (!foundHere && timedout) {
                     queryPort.close();
@@ -160,18 +160,51 @@ that.espruino = function(spec) {
     //were going to wrap the text to flash in a self executing anonymous function,
     //to ensure that eveything runs at once.
 
-    text = '(function(){ ' + text + ' })();';
-
     espruino.reset(function() {
-      espruino.command(text, function() {
+      espruino.commandWrapped(text, function() {
         espruino.save(function() {
-          if(!_.isUndefined(done)){
+          if (!_.isUndefined(done)) {
             done();
           }
         });
       });
     });
 
+  };
+
+  espruino.addModule = function(name, code, done) {
+    name = JSON.stringify(name);
+    code = JSON.stringify(code);
+    espruino.commandWrapped('Modules.addCached(' + name + ',' + code + ');', function() {
+      done();
+    });
+  };
+
+  espruino.clearModules = function(done) {
+    espruino.command('Modules.removeAllCached();', function() {
+      done();
+    });
+  };
+
+  espruino.parseModules = function(code) {
+    // this is pulled from https://github.com/espruino/EspruinoWebIDE/blob/master/js/espruino_modules.js#L126
+    // it has the same bug as that does, if the users code has
+    // anything containing `require` it will be grabbed by the regex. 
+    // the suggested fix is to use a javascript lexer to parse the javascript instead of using a regex
+
+    var modules = [];
+    var requires = code.match(/\brequire\( *(\"|\')([^(\"|\')]*)(\"|\') *\)/g);
+    for (var i in requires) {
+      // strip off beginning and end, and parse the string
+      //var module = JSON.parse(requires[i].substring(8, requires[i].length - 1));
+      var rawName  = requires[i].substring(8, requires[i].length - 1);
+      rawName = rawName.replace(/\'/g, '"');
+      var module = JSON.parse(rawName);
+      var builtin_modules = ["http", "fs", "CC3000"]; // espruino has these modules built in, ignore them.
+      if (builtin_modules.indexOf(module) < 0 && modules.indexOf(module) < 0)
+        modules.push(module);
+    }
+    return modules;
   };
 
   var command = function(serialPort, command, done) {
@@ -243,6 +276,11 @@ that.espruino = function(spec) {
   espruino.command = function(text, done) {
     ensureOpend();
     command(serialPort, text, done);
+  };
+
+  espruino.commandWrapped = function(text, done) {
+    ensureOpend();
+    espruino.command('(function(){ ' + text + ' })();', done);
   };
 
   espruino.dump = function(done) {

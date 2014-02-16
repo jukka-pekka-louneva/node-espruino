@@ -75,6 +75,10 @@ Accepts a callback to be run when communication is established.
 
 Executes text on espruino, calls `done` on completion with result of command. 
 
+`function command(text, function done(result) )`
+
+Same as `command`, wraps `text` with `(function() { text... })();`.
+
 `function reset(done)`
 
 Resets boards memory to default, dumping all loaded code. `done` is a callback that executes after reset completes.
@@ -90,6 +94,19 @@ Convenience function, resets board, writes text then saves all in one call.
 `function dump(function done(result))`
 
 Dumps loaded code from espruino.
+
+`function addModule(name, code, function done)`
+
+Adds a module with the specified name and code to the espruino. It can then be loaded by 
+running `require('name')` on the espruino.
+
+`function clearModules(function done)`
+
+Clears all loaded modules from espruino.
+
+`function parseModules(code)`
+
+Returns an array of all modules defined in `code`. Parses out `require('module')` from input code.
 
 `function close(function done() )`
 

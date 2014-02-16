@@ -29,7 +29,6 @@ var runCommand = function(espruino) {
 	if (command === 'flash') {
 		espruino.open(function(err) {
 
-			debugger;
 			if (err) {
 				espruino.close();
 				console.error(err);
