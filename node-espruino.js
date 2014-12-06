@@ -184,7 +184,17 @@ that.espruino = function(spec) {
           var modulePath = path.resolve(workingDir, moduleName);
 
           if (!fs.existsSync(modulePath)) {
-            throw modulePath + ' does not exist';
+              var pkgPath = workingDir + 'node_modules/' + moduleName + '/';
+              var pkgFile = pkgPath + 'package.json';
+              if (!fs.existsSync(pkgFile)) {
+                  throw modulePath + ' does not exist';
+              } else {
+                  var pkg = JSON.parse(fs.readFileSync(pkgFile));
+                  var modulePath = pkgPath + pkg.main;
+                  if (!fs.existsSync(modulePath)) {
+                      throw modulePath + ' does not exist';
+                  }
+              }
           }
 
           var module = {
@@ -381,7 +391,9 @@ that.espruino = function(spec) {
 
   espruino.close = function(done) {
     if (typeof serialPort !== 'undefined') {
-      serialPort.close(done);
+       setTimeout(function() {
+		   serialPort.close(done);
+		}, 100);
     }
   };
 
